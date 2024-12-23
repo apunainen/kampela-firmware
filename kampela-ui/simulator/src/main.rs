@@ -27,6 +27,8 @@ const UPDATE_DELAY_TIME: Duration = Duration::new(0, 500000000);
 
 const MAX_TOUCH_QUEUE: usize = 2;
 
+mod infernal_wordlist;
+
 use kampela_ui::{
     data_state::{AppStateInit, NFCState, DataInit, StorageState},
     display_def::*,
@@ -212,7 +214,7 @@ fn main() {
         .theme(BinaryColorTheme::Inverted)
         .build();
     let mut window = Window::new("Hello world", &output_settings); //.show_static(&display);
-    
+
     let mut update = Some(UpdateRequest::Slow);
 
     let mut touches = VecDeque::new();
