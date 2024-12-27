@@ -1,20 +1,15 @@
 //! This is simulator to develop Kampela UI mocks
 #![deny(unused_crate_dependencies)]
-use embedded_graphics_core::{
-    primitives::PointsIter,
-    Drawable,
-    pixelcolor::BinaryColor,
-    Pixel,
-};
+use embedded_graphics_core::{pixelcolor::BinaryColor, primitives::PointsIter, Drawable, Pixel};
 
+use clap::Parser;
 use embedded_graphics_simulator::{
     BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
+use mnemonic_external::regular::InternalWordList;
 use rand::{rngs::ThreadRng, thread_rng};
 use std::{collections::VecDeque, thread::sleep, time::Duration};
-use clap::Parser;
 use substrate_crypto_light::sr25519::Public;
-use mnemonic_external::regular::InternalWordList;
 
 /// Amount of time required for full screen update; debounce
 ///  should be quite large as screen takes this much to clean
@@ -30,7 +25,7 @@ const MAX_TOUCH_QUEUE: usize = 2;
 mod infernal_wordlist;
 
 use kampela_ui::{
-    data_state::{AppStateInit, NFCState, DataInit, StorageState},
+    data_state::{AppStateInit, DataInit, NFCState, StorageState},
     display_def::*,
     platform::{PinCode, Platform},
     uistate::{UIState, UpdateRequest, UpdateRequestMutate},
@@ -79,9 +74,7 @@ struct HALHandle {
 impl HALHandle {
     pub fn new() -> Self {
         let rng = thread_rng();
-        Self {
-            rng: rng,
-        }
+        Self { rng: rng }
     }
 }
 
@@ -99,7 +92,7 @@ impl DesktopSimulator {
         let pin = [0; 4];
         let transaction = match init_state.nfc {
             NFCState::Empty => None,
-            NFCState::Transaction => Some(NfcTransactionData{
+            NFCState::Transaction => Some(NfcTransactionData {
                 call: String::from("Hello, this is a transaction!"),
                 extension: String::from("Hello, this is a transaction!"),
                 signature: [0u8; 130],
@@ -180,7 +173,7 @@ impl Platform for DesktopSimulator {
     fn signature(&mut self) -> [u8; 130] {
         match self.transaction {
             Some(ref a) => a.signature,
-            None =>  panic!("qr not ready!"),
+            None => panic!("qr not ready!"),
         }
     }
 
@@ -193,17 +186,16 @@ impl Platform for DesktopSimulator {
     }
 }
 
-
 fn main() {
     let args = Args::parse();
     let init_data_state = AppStateInit::new(args);
     println!("{:?}", init_data_state);
 
     /*
-    // Prepare
-    let mut display: SimulatorDisplay<BinaryColor> =
-        SimulatorDisplay::new(Size::new(SCREEN_SIZE_X, SCREEN_SIZE_Y));
-*/
+        // Prepare
+        let mut display: SimulatorDisplay<BinaryColor> =
+            SimulatorDisplay::new(Size::new(SCREEN_SIZE_X, SCREEN_SIZE_Y));
+    */
     let mut h = HALHandle::new();
     let desktop = DesktopSimulator::new(&init_data_state);
     let display = SimulatorDisplay::new(SCREEN_SIZE);
@@ -233,7 +225,8 @@ fn main() {
         // display event; it would be delayed
         if let Some(u) = update.take() {
             sleep(UPDATE_DELAY_TIME);
-            let is_clear_update = matches!(u, UpdateRequest::Slow) || matches!(u, UpdateRequest::Fast);
+            let is_clear_update =
+                matches!(u, UpdateRequest::Slow) || matches!(u, UpdateRequest::Fast);
             match state.render(is_clear_update, &mut h) {
                 Ok(a) => update.propagate(a),
                 Err(e) => println!("{:?}", e),
@@ -243,7 +236,7 @@ fn main() {
                 UpdateRequest::Hidden => {
                     window.update(&state.display);
                     println!("skip {} events in hidden update", window.events().count());
-                },
+                }
                 UpdateRequest::Slow => {
                     invert_display(&mut state.display);
                     window.update(&state.display);
@@ -261,7 +254,7 @@ fn main() {
 
                     window.update(&state.display);
                     println!("skip {} events in slow update", window.events().count());
-                },
+                }
                 UpdateRequest::Fast => {
                     invert_display(&mut state.display);
                     window.update(&state.display);
@@ -269,17 +262,17 @@ fn main() {
                     invert_display(&mut state.display);
                     window.update(&state.display);
                     println!("fast update");
-                },
+                }
                 UpdateRequest::UltraFast => {
                     window.update(&state.display);
                     println!("ultrafast update");
                     sleep(ULTRAFAST_UPDATE_TIME);
-                },
+                }
                 UpdateRequest::Part(a) => {
                     window.update(&state.display);
                     println!("part update of area {:?}", a);
                     sleep(ULTRAFAST_UPDATE_TIME);
-                },
+                }
             }
         }
         // this collects ui events, do not remove or simulator will crash
@@ -312,5 +305,5 @@ fn invert_display(display: &mut SimulatorDisplay<BinaryColor>) {
     for point in SCREEN_AREA.points() {
         let dot = Pixel::<BinaryColor>(point, display.get_pixel(point).invert());
         dot.draw(display).unwrap();
-    };
+    }
 }
