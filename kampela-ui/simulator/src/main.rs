@@ -6,7 +6,7 @@ use clap::Parser;
 use embedded_graphics_simulator::{
     BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
-use mnemonic_external::regular::InternalWordList;
+// use mnemonic_external::regular::InternalWordList;
 use rand::{rngs::ThreadRng, thread_rng};
 use std::{collections::VecDeque, thread::sleep, time::Duration};
 use substrate_crypto_light::sr25519::Public;
@@ -23,6 +23,10 @@ const UPDATE_DELAY_TIME: Duration = Duration::new(0, 500000000);
 const MAX_TOUCH_QUEUE: usize = 2;
 
 mod infernal_wordlist;
+use infernal_wordlist::InfernalWordList;
+
+mod flash_emulation;
+use flash_emulation::FlashData;
 
 use kampela_ui::{
     data_state::{AppStateInit, DataInit, NFCState, StorageState},
@@ -46,6 +50,12 @@ struct Args {
 
     #[arg(short = 'T')]
     transaction_received: bool,
+
+    #[arg(short, long)]
+    wordlist_path: Option<String>,
+
+    #[arg(short, long)]
+    flash_path: Option<String>,
 }
 
 impl DataInit<Args> for AppStateInit {
@@ -84,12 +94,24 @@ struct DesktopSimulator {
     entropy: Option<Vec<u8>>,
     address: Option<[u8; 76]>,
     transaction: Option<NfcTransactionData>,
-    stored_entropy: Option<Vec<u8>>,
+    flash_data: Option<FlashData>,
 }
 
 impl DesktopSimulator {
     pub fn new(init_state: &AppStateInit) -> Self {
-        let pin = [0; 4];
+        let args = Args::parse();
+        let mut flash_data: Option<FlashData> = None;
+        if let Some(path) = args.flash_path {
+            flash_data = Some(FlashData::from_json_file(&path));
+        }
+        let mut pin = [0; 4];
+        if let Some(flash_data) = &flash_data {
+            if let Some(stored_pin) = flash_data.pin {
+                pin = stored_pin;
+                println!("pin read from emulated storage: {:?}", pin);
+            }
+        }
+
         let transaction = match init_state.nfc {
             NFCState::Empty => None,
             NFCState::Transaction => Some(NfcTransactionData {
@@ -103,7 +125,7 @@ impl DesktopSimulator {
             entropy: None,
             address: None,
             transaction: transaction,
-            stored_entropy: None,
+            flash_data: flash_data,
         }
     }
 }
@@ -112,10 +134,14 @@ impl Platform for DesktopSimulator {
     type HAL = HALHandle;
     type Rng<'a> = &'a mut ThreadRng;
     type NfcTransaction = NfcTransactionData;
-    type AsWordList = InternalWordList;
+    type AsWordList = InfernalWordList;
 
     fn get_wordlist() -> Self::AsWordList {
-        InternalWordList
+        let args = Args::parse();
+        if let Some(path) = args.wordlist_path {
+            return InfernalWordList::from_file(&path);
+        }
+        return InfernalWordList::new();
     }
 
     fn rng<'a>(h: &'a mut Self::HAL) -> Self::Rng<'a> {
@@ -131,13 +157,36 @@ impl Platform for DesktopSimulator {
     }
 
     fn store_entropy(&mut self, e: &[u8]) {
+        println!("Store entropy: {} bytes {:?}", e.len(), e);
+        let args = Args::parse();
+
+        if let Some(path) = args.flash_path {
+            let mut flash_data = FlashData::from_json_file(&path);
+            let mut actual_entropy: [u8; 32] = [0; 32];
+            actual_entropy.copy_from_slice(e);
+            flash_data.entropy = Some(actual_entropy);
+            flash_data.to_json_file(&path);
+            self.flash_data = Some(flash_data);
+            println!("Flash file ({}) updated with entropy", path);
+        }
         self.entropy = Some(e.to_vec());
-        println!("entropy stored (not really, this is emulator)");
     }
 
     fn read_entropy(&mut self) {
-        self.entropy = self.stored_entropy.clone();
-        println!("entropy read from emulated storage: {:?}", &self.entropy);
+        if self.flash_data.is_none() {
+            println!("No flash data");
+            return;
+        }
+        if self.flash_data.as_ref().unwrap().entropy.is_none() {
+            println!("No entropy in flash data");
+            return;
+        }
+        let flash_data: &FlashData = self.flash_data.as_ref().unwrap();
+        self.entropy = Some(flash_data.entropy.unwrap().to_vec());
+        println!(
+            "entropy read from emulated storage: {:?}",
+            &self.entropy.as_ref().unwrap()
+        );
     }
 
     fn public(&self) -> Option<Public> {
@@ -205,7 +254,7 @@ fn main() {
     let output_settings = OutputSettingsBuilder::new()
         .theme(BinaryColorTheme::Inverted)
         .build();
-    let mut window = Window::new("Hello world", &output_settings); //.show_static(&display);
+    let mut window = Window::new("Kampela Emulator", &output_settings); //.show_static(&display);
 
     let mut update = Some(UpdateRequest::Slow);
 

@@ -14,7 +14,7 @@ use std::path::PathBuf;
  * or reads it from the file.
  */
 #[derive(Debug)]
-struct InfernalWordList {
+pub struct InfernalWordList {
     words: Option<[String; 2048]>,
 }
 
@@ -36,12 +36,17 @@ impl InfernalWordList {
         let checksum = hasher.finalize();
         const EXPECTED_CHECKSUM: u32 = 0x81b9dda4;
         if checksum != EXPECTED_CHECKSUM {
-            panic!("Checksum mismatch: 0x{:x}, expected 0x{:x}", checksum, EXPECTED_CHECKSUM);
+            panic!(
+                "Checksum mismatch: 0x{:x}, expected 0x{:x}",
+                checksum, EXPECTED_CHECKSUM
+            );
         }
     }
 
     pub fn from_file(path: &str) -> Self {
-        let buf: Vec<u8> = std::fs::read(path).expect(format!("Failed to read file: {}", path).as_str());
+        println!("Reading wordlist from file: {}", path);
+        let buf: Vec<u8> =
+            std::fs::read(path).expect(format!("Failed to read file: {}", path).as_str());
         let mut wordlist = Self::new();
         wordlist.load_words(buf);
         return wordlist;
@@ -192,8 +197,15 @@ mod tests {
     fn test_get_word_internal() {
         let wordlist = InfernalWordList::new();
         for i in 0..2048 {
-            let word = wordlist.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O");
-            assert_eq!(word, InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O"));
+            let word = wordlist
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O");
+            assert_eq!(
+                word,
+                InternalWordList
+                    .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                    .expect("??? o.O")
+            );
         }
     }
 
@@ -201,8 +213,15 @@ mod tests {
     fn test_get_word_external() {
         let wordlist = get_wordlist_external();
         for i in 0..2048 {
-            let word = wordlist.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O");
-            assert_eq!(word, InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O"));
+            let word = wordlist
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O");
+            assert_eq!(
+                word,
+                InternalWordList
+                    .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                    .expect("??? o.O")
+            );
         }
     }
 
@@ -210,9 +229,13 @@ mod tests {
     fn test_get_words_by_prefix_internal() {
         let wordlist = InfernalWordList::new();
         for i in 0..2048 {
-            let prefix = &InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O")[..2];
+            let prefix = &InternalWordList
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O")[..2];
             let words = wordlist.get_words_by_prefix(prefix).expect("??? o.O");
-            let expected_words = InternalWordList.get_words_by_prefix(prefix).expect("??? o.O");
+            let expected_words = InternalWordList
+                .get_words_by_prefix(prefix)
+                .expect("??? o.O");
             assert_eq!(words.len(), expected_words.len(), "Prefix: {}", prefix);
             for (i, word) in words.iter().enumerate() {
                 assert_eq!(word.word, expected_words[i].word);
@@ -225,9 +248,13 @@ mod tests {
     fn test_get_words_by_prefix_external() {
         let wordlist = get_wordlist_external();
         for i in 0..2048 {
-            let prefix = &InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O")[..2];
+            let prefix = &InternalWordList
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O")[..2];
             let words = wordlist.get_words_by_prefix(prefix).expect("??? o.O");
-            let expected_words = InternalWordList.get_words_by_prefix(prefix).expect("??? o.O");
+            let expected_words = InternalWordList
+                .get_words_by_prefix(prefix)
+                .expect("??? o.O");
             assert_eq!(words.len(), expected_words.len(), "Prefix: {}", prefix);
             for (i, word) in words.iter().enumerate() {
                 assert_eq!(word.word, expected_words[i].word);
@@ -240,7 +267,9 @@ mod tests {
     fn test_bits11_for_word_internal() {
         let wordlist = InfernalWordList::new();
         for i in 0..2048 {
-            let word = InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O");
+            let word = InternalWordList
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O");
             let bits = wordlist.bits11_for_word(&word).expect("??? o.O");
             assert_eq!(bits.bits(), i as u16);
         }
@@ -250,7 +279,9 @@ mod tests {
     fn test_bits11_for_word_external() {
         let wordlist = get_wordlist_external();
         for i in 0..2048 {
-            let word = InternalWordList.get_word(Bits11::from(i as u16).expect("??? o.O")).expect("??? o.O");
+            let word = InternalWordList
+                .get_word(Bits11::from(i as u16).expect("??? o.O"))
+                .expect("??? o.O");
             let bits = wordlist.bits11_for_word(&word).expect("??? o.O");
             assert_eq!(bits.bits(), i as u16);
         }
