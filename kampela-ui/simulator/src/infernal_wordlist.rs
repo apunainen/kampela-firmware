@@ -122,9 +122,9 @@ impl AsWordList for InfernalWordList {
     }
 }
 
-#[cfg(test)] // Compile this module only during testing
+#[cfg(test)]
 mod tests {
-    use super::*; // Import functions from the parent module
+    use super::*;
 
     fn get_wordlist_buf() -> Vec<u8> {
         let mut buf = Vec::new();
@@ -157,11 +157,8 @@ mod tests {
     fn test_load_words() {
         let mut wordlist = InfernalWordList::new();
         let buf = get_wordlist_buf();
-        // Load words from the buffer
         wordlist.load_words(buf);
-        // Check that now words in the wordlist are not None
         assert!(wordlist.words.is_some());
-        // Compare stored words with the original ones
         let words = wordlist.words.unwrap();
         for (i, word) in words.iter().enumerate() {
             assert_eq!(
