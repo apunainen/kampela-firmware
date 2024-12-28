@@ -28,6 +28,10 @@ use infernal_wordlist::InfernalWordList;
 mod flash_emulation;
 use flash_emulation::FlashData;
 
+use mnemonic_external::AsWordList;
+use mnemonic_external::Bits11;
+use mnemonic_external::WordSet;
+
 use kampela_ui::{
     data_state::{AppStateInit, DataInit, NFCState, StorageState},
     display_def::*,
@@ -158,6 +162,9 @@ impl Platform for DesktopSimulator {
 
     fn store_entropy(&mut self, e: &[u8]) {
         println!("Store entropy: {} bytes {:?}", e.len(), e);
+        let wordset = WordSet::from_entropy(e).unwrap();
+        let wordlist = Self::get_wordlist();
+        println!("Wordset is: {:?}", wordset.to_phrase(&wordlist).unwrap());
         let args = Args::parse();
 
         if let Some(path) = args.flash_path {
@@ -169,6 +176,7 @@ impl Platform for DesktopSimulator {
             self.flash_data = Some(flash_data);
             println!("Flash file ({}) updated with entropy", path);
         }
+
         self.entropy = Some(e.to_vec());
     }
 
@@ -183,10 +191,14 @@ impl Platform for DesktopSimulator {
         }
         let flash_data: &FlashData = self.flash_data.as_ref().unwrap();
         self.entropy = Some(flash_data.entropy.unwrap().to_vec());
+        let wordlist = Self::get_wordlist();
+        let entropy = self.entropy.as_ref().unwrap();
+        let wordset = WordSet::from_entropy(entropy).unwrap();
         println!(
             "entropy read from emulated storage: {:?}",
             &self.entropy.as_ref().unwrap()
         );
+        println!("Wordset is: {:?}", wordset.to_phrase(&wordlist).unwrap());
     }
 
     fn public(&self) -> Option<Public> {
